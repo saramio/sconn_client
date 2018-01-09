@@ -44,12 +44,15 @@ typedef long     ssize_t;
 #ifndef _WIN32
 #define _WIN32
 #endif
-#include <winsock2.h>
-#include <ws2tcpip.h>
+//#include <winsock2.h>
+//#include <ws2tcpip.h>
 #include <io.h>
 #pragma comment(lib, "Ws2_32.lib")
 #define close closesocket
 #define socket_errno WSAGetLastError()
+
+#include "win_compat.h"
+#define strcasecmp stricmp
 
 #elif __MINGW32__
 
@@ -276,7 +279,7 @@ _normalize_ip(lua_State *L) {
         return 1;
     }
 
-    if(inet_ntop(domain, buf, str, INET6_ADDRSTRLEN) == NULL) {
+    if(inet_ntop(domain, (const void *)buf, str, INET6_ADDRSTRLEN) == NULL) {
         lua_pushnil(L);
         return 1;
     }
@@ -656,7 +659,7 @@ _sock_getsockopt(lua_State *L) {
         if(err < 0) {
             goto failed;
         }
-        lua_pushlstring(L, optval, buflen);
+        lua_pushlstring(L, (const char*)optval, buflen);
     }
     return 1;
 failed:
@@ -776,16 +779,16 @@ void os_init() {
     }
 }
 
-// BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
-//     if(fdwReason == DLL_PROCESS_ATTACH) {
-//         os_init();
-//     }
-//     return TRUE;
-// }
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+     if(fdwReason == DLL_PROCESS_ATTACH) {
+         os_init();
+     }
+     return TRUE;
+ }
 #endif
 
 
-LUALIB_API int luaopen_socket_c(lua_State *L) {
+int luaopen_socket_c(lua_State *L) {
     luaL_checkversion(L);
 
     if(luaL_newmetatable(L, SOCKET_METATABLE)) {
